@@ -1,17 +1,23 @@
-import type { ExpoConfig } from 'expo/config';
-
 /**
  * Single source of app configuration.
  *
- * Env vars are read from `.env` (Expo loads it automatically) and forwarded to
- * the app through `extra`. Only PUBLIC values belong here — the Supabase
+ * Plain JS on purpose: eas-cli transpiles a TypeScript app.config.ts through its
+ * own loader, which fails on this project ("Cannot read properties of undefined
+ * (reading 'CommonJS')"). A .js config is read identically by expo start, expo
+ * export and EAS, with no transpile step involved.
+ *
+ * Env vars come from .env (Expo loads it automatically) and are forwarded to the
+ * app through `extra`. Only PUBLIC values belong here — the Supabase
  * service-role key must never leave the Edge Functions environment.
+ *
+ * @type {import('expo/config').ExpoConfig}
  */
-const config: ExpoConfig = {
+const config = {
   name: 'RepBook',
   slug: 'repbook',
   version: '0.1.0',
   scheme: 'repbook',
+  owner: 'ansh18',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   userInterfaceStyle: 'dark',
@@ -54,7 +60,11 @@ const config: ExpoConfig = {
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? '',
     // Optional: crash reporting stays off entirely when this is empty.
     sentryDsn: process.env.SENTRY_DSN ?? '',
+    eas: {
+      // Written by hand: EAS cannot edit a dynamic config for us.
+      projectId: 'ab395213-1efc-4beb-b086-aad184549347',
+    },
   },
 };
 
-export default config;
+module.exports = config;

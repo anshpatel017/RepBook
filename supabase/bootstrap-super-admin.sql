@@ -22,4 +22,3 @@ where id = 'c97d8088-47bf-4dcc-93bc-0765376129d6';  -- <-- paste your auth UID h
 select id, role, display_name, gym_id, must_change_password, onboarded
 from public.profiles
 where role = 'super_admin';
-y

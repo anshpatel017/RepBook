@@ -55,6 +55,14 @@ const config = {
     typedRoutes: true,
     reactCompiler: true,
   },
+  // EAS Update, so JS-only fixes can ship without a store release. Required
+  // once expo-updates is installed; EAS can't write these into a dynamic config.
+  updates: {
+    url: 'https://u.expo.dev/ab395213-1efc-4beb-b086-aad184549347',
+  },
+  runtimeVersion: {
+    policy: 'appVersion',
+  },
   extra: {
     supabaseUrl: process.env.SUPABASE_URL ?? '',
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? '',

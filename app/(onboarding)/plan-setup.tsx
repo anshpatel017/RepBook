@@ -12,6 +12,7 @@ import {
 
 import type { PlanTemplate } from '@/api/plan';
 import { Button } from '@/components/Button';
+import { Icon } from '@/components/Icon';
 import { ErrorState, LoadingState, Screen } from '@/components/Screen';
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile';
 import { useCreatePlan, useTemplates } from '@/hooks/usePlan';
@@ -151,7 +152,7 @@ export default function PlanSetupScreen() {
             })}
           </View>
           <View style={styles.restCard}>
-            <Text style={styles.restLabel}>Sunday · Rest day 😴</Text>
+            <Text style={styles.restLabel}>Sunday · rest day</Text>
           </View>
 
           <View style={styles.section}>
@@ -182,7 +183,7 @@ export default function PlanSetupScreen() {
           </View>
 
           {selectedDays.length === 0 ? (
-            <Text style={styles.hint}>Pick a day above (or a template) to add exercises 👆</Text>
+            <Text style={styles.hint}>Pick a day above, or start from a template.</Text>
           ) : (
             selectedDays.map((day) => (
               <View key={day} style={styles.dayCard}>
@@ -199,7 +200,7 @@ export default function PlanSetupScreen() {
                       accessibilityLabel={`Remove ${name}`}
                       style={styles.removeButton}
                     >
-                      <Text style={styles.removeGlyph}>✕</Text>
+                      <Icon name="x" size={16} color={colors.dim} />
                     </Pressable>
                   </View>
                 ))}

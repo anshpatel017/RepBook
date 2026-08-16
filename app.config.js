@@ -36,7 +36,10 @@ const config = {
     predictiveBackGestureEnabled: false,
   },
   web: {
-    output: 'static',
+    // 'single' (SPA), not 'static': dynamic routes like /log/[day]/[week] are not
+    // pre-rendered, so a static export would 404 on refresh or a shared link.
+    // Client-side routing handles every path from one index.html.
+    output: 'single',
     favicon: './assets/images/favicon.png',
   },
   plugins: [

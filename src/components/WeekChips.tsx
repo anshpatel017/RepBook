@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
-import { colors, fonts, radius, space, HIT_SLOP_MIN } from '@/theme/tokens';
+import { Icon } from '@/components/Icon';
+import { colors, radius, space, type } from '@/theme/tokens';
 
 type WeekChipsProps = {
   weeks: readonly number[];
@@ -11,7 +12,7 @@ type WeekChipsProps = {
   creatingWeek?: boolean;
 };
 
-/** Week 1 ·✓  Week 2 ·✓  … (Week 4)  ＋ New week  (wireframe screen 3). */
+/** Week 1 ✓ … [Week 4 · now]  + New week. The current week is a solid lime pill. */
 export function WeekChips({
   weeks,
   currentWeek,
@@ -21,11 +22,7 @@ export function WeekChips({
   creatingWeek = false,
 }: WeekChipsProps) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.row}
-    >
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {weeks.map((week) => {
         const isCurrent = week === currentWeek;
         const hasData = loggedWeeks.includes(week);
@@ -43,8 +40,9 @@ export function WeekChips({
           >
             <Text style={[styles.label, isCurrent && styles.labelCurrent]}>
               Week {week}
-              {hasData ? ' ·✓' : ''}
+              {isCurrent ? ' · now' : ''}
             </Text>
+            {hasData && !isCurrent ? <Icon name="check" size={13} color={colors.accent} /> : null}
           </Pressable>
         );
       })}
@@ -54,14 +52,10 @@ export function WeekChips({
         disabled={creatingWeek}
         accessibilityRole="button"
         accessibilityLabel="Start a new week"
-        style={({ pressed }) => [
-          styles.chip,
-          styles.chipNew,
-          pressed && styles.pressed,
-          creatingWeek && styles.pressed,
-        ]}
+        style={({ pressed }) => [styles.chip, (pressed || creatingWeek) && styles.pressed]}
       >
-        <Text style={[styles.label, styles.labelNew]}>＋ New week</Text>
+        <Icon name="plus" size={14} color={colors.accent} />
+        <Text style={[styles.label, styles.labelNew]}>New week</Text>
       </Pressable>
     </ScrollView>
   );
@@ -70,18 +64,17 @@ export function WeekChips({
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: space.sm, paddingVertical: space.xs },
   chip: {
-    minHeight: HIT_SLOP_MIN - 8,
-    justifyContent: 'center',
-    paddingHorizontal: space.lg,
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
     borderRadius: radius.chip,
-    borderWidth: 1,
-    borderColor: colors.line,
     backgroundColor: colors.card,
   },
-  chipCurrent: { borderColor: colors.accent, backgroundColor: colors.accentDark },
-  chipNew: { backgroundColor: 'transparent', borderStyle: 'dashed' },
+  chipCurrent: { backgroundColor: colors.accent, paddingHorizontal: space.lg },
   pressed: { opacity: 0.8 },
-  label: { fontFamily: fonts.bodyMed, fontSize: 14, color: colors.text },
-  labelCurrent: { color: colors.accent },
-  labelNew: { color: colors.muted },
+  label: { ...type.bodyMed, fontSize: 14, color: colors.muted },
+  labelCurrent: { color: colors.accentDark },
+  labelNew: { color: colors.accent },
 });

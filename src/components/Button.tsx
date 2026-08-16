@@ -1,23 +1,33 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fonts, radius, space, HIT_SLOP_MIN } from '@/theme/tokens';
+import { Icon, type IconName } from '@/components/Icon';
+import { colors, radius, space, type, CONTROL } from '@/theme/tokens';
 
 type ButtonProps = {
   label: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'danger';
+  icon?: IconName;
   loading?: boolean;
   disabled?: boolean;
 };
 
+/**
+ * primary  — solid lime, condensed uppercase label. One per screen.
+ * secondary— card2 fill, no border.
+ * danger   — hairline red outline, sits apart from everything else.
+ */
 export function Button({
   label,
   onPress,
   variant = 'primary',
+  icon,
   loading = false,
   disabled = false,
 }: ButtonProps) {
   const inactive = disabled || loading;
+  const tint =
+    variant === 'primary' ? colors.accentDark : variant === 'danger' ? colors.danger : colors.text;
 
   return (
     <Pressable
@@ -35,20 +45,9 @@ export function Button({
       ]}
     >
       <View style={styles.content}>
-        {loading ? (
-          <ActivityIndicator
-            size="small"
-            color={variant === 'primary' ? colors.accentDark : colors.accent}
-          />
-        ) : null}
-        <Text
-          style={[
-            styles.label,
-            variant === 'primary' && styles.labelPrimary,
-            variant === 'secondary' && styles.labelSecondary,
-            variant === 'danger' && styles.labelDanger,
-          ]}
-        >
+        {loading ? <ActivityIndicator size="small" color={tint} /> : null}
+        {!loading && icon ? <Icon name={icon} size={18} color={tint} /> : null}
+        <Text style={[variant === 'primary' ? styles.labelPrimary : styles.label, { color: tint }]}>
           {label}
         </Text>
       </View>
@@ -58,19 +57,17 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: HIT_SLOP_MIN,
+    minHeight: CONTROL.cta,
     borderRadius: radius.input,
     justifyContent: 'center',
     paddingHorizontal: space.lg,
   },
   primary: { backgroundColor: colors.accent },
-  secondary: { backgroundColor: colors.card2, borderWidth: 1, borderColor: colors.line },
+  secondary: { backgroundColor: colors.card2 },
   danger: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.danger },
   pressed: { opacity: 0.85 },
-  inactive: { opacity: 0.5 },
+  inactive: { opacity: 0.45 },
   content: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
-  label: { fontFamily: fonts.bodyMed, fontSize: 15, textAlign: 'center' },
-  labelPrimary: { color: colors.accentDark },
-  labelSecondary: { color: colors.text },
-  labelDanger: { color: colors.danger },
+  label: { ...type.bodyMed, textAlign: 'center' },
+  labelPrimary: { ...type.display3, letterSpacing: 1, textAlign: 'center' },
 });

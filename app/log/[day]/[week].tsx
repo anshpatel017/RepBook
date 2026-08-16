@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -13,19 +13,21 @@ import {
 
 import type { DayLogEntry, LoggedSet } from '@/api/sets';
 import { ExerciseCard } from '@/components/ExerciseCard';
+import { Icon } from '@/components/Icon';
 import { EmptyState, ErrorState, LoadingState, Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { nextSetNumber, useDayHistory, useDayLog } from '@/hooks/useDayLog';
 import { useProfile } from '@/hooks/useProfile';
 import { useAddExercise, useArchiveExercise, useRenameExercise } from '@/hooks/usePlan';
 import { useSession } from '@/hooks/useSession';
-import { useShowGhosts } from '@/stores/ui';
 import { dayLong, parseDay, parseWeek } from '@/lib/days';
-import { colors, fonts, radius, space, HIT_SLOP_MIN } from '@/theme/tokens';
+import { useShowGhosts } from '@/stores/ui';
+import { colors, radius, space, type } from '@/theme/tokens';
 
 /**
- * THE core screen (wireframe screen 4). No save button anywhere: every edit
- * auto-saves through useDayLog with optimistic updates and rollback.
+ * THE core screen. No save button anywhere: every edit auto-saves through
+ * useDayLog with optimistic updates and rollback. The only feedback is a
+ * two-word status in the header — trustworthy, and it never shifts layout.
  */
 export default function LogScreen() {
   const params = useLocalSearchParams<{ day?: string; week?: string }>();
@@ -45,6 +47,21 @@ export default function LogScreen() {
 
   const [newName, setNewName] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const savingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const markSaving = useCallback(() => {
+    setSaving(true);
+    if (savingTimer.current) clearTimeout(savingTimer.current);
+    savingTimer.current = setTimeout(() => setSaving(false), 700);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (savingTimer.current) clearTimeout(savingTimer.current);
+    },
+    [],
+  );
 
   const entries = useMemo(() => log.data ?? [], [log.data]);
   const exerciseIds = useMemo(() => entries.map((entry) => entry.id), [entries]);
@@ -53,12 +70,13 @@ export default function LogScreen() {
   const handleSaveSet = useCallback(
     (exerciseId: string, setNumber: number, weightKg: number | null, reps: number | null) => {
       setSaveError(null);
+      markSaving();
       log.save.mutate(
         { exerciseId, setNumber, weightKg, reps },
         { onError: () => setSaveError("Couldn't save that set — check your connection.") },
       );
     },
-    [log.save],
+    [log.save, markSaving],
   );
 
   const handleAddSet = useCallback(
@@ -69,12 +87,13 @@ export default function LogScreen() {
         return;
       }
       setSaveError(null);
+      markSaving();
       log.save.mutate(
         { exerciseId: entry.id, setNumber, weightKg: null, reps: null },
         { onError: () => setSaveError("Couldn't add that set — check your connection.") },
       );
     },
-    [log.save],
+    [log.save, markSaving],
   );
 
   const handleRemoveSet = useCallback(
@@ -86,12 +105,13 @@ export default function LogScreen() {
         return;
       }
       setSaveError(null);
+      markSaving();
       log.removeSet.mutate(
         { exerciseId, setId: set.id },
         { onError: () => setSaveError("Couldn't remove that set — check your connection.") },
       );
     },
-    [log.removeSet],
+    [log.removeSet, markSaving],
   );
 
   const handleRename = useCallback(
@@ -128,7 +148,30 @@ export default function LogScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title={dayLong(day)} subtitle={`Week ${week}`} back />
+      <ScreenHeader
+        title={dayLong(day).toUpperCase()}
+        back
+        right={
+          <View style={styles.headerRight}>
+            <View style={styles.weekChip}>
+              <Text style={styles.weekChipLabel}>WEEK {week}</Text>
+            </View>
+            <View style={styles.status}>
+              {saving ? (
+                <>
+                  <View style={styles.savingDot} />
+                  <Text style={styles.savingLabel}>Saving</Text>
+                </>
+              ) : (
+                <>
+                  <Icon name="check" size={14} color={colors.dim} />
+                  <Text style={styles.savedLabel}>Saved</Text>
+                </>
+              )}
+            </View>
+          </View>
+        }
+      />
 
       {saveError ? <Text style={styles.saveError}>{saveError}</Text> : null}
 
@@ -152,7 +195,7 @@ export default function LogScreen() {
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
-              <EmptyState title="No exercises yet" hint="Add your first one 👇" />
+              <EmptyState title="No exercises yet" hint="Add your first one below." />
             }
             renderItem={({ item }) => (
               <ExerciseCard
@@ -166,31 +209,31 @@ export default function LogScreen() {
                 onDelete={handleDelete}
               />
             )}
-            ListFooterComponent={
-              <View style={styles.addRow}>
-                <TextInput
-                  value={newName}
-                  onChangeText={setNewName}
-                  onSubmitEditing={handleAddExercise}
-                  placeholder="Add exercise…"
-                  placeholderTextColor={colors.dim}
-                  selectionColor={colors.accent}
-                  maxLength={80}
-                  accessibilityLabel="New exercise name"
-                  style={styles.addInput}
-                />
-                <Pressable
-                  onPress={handleAddExercise}
-                  accessibilityRole="button"
-                  disabled={addExercise.isPending}
-                  style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
-                >
-                  <Text style={styles.addButtonLabel}>Add</Text>
-                </Pressable>
-              </View>
-            }
           />
         )}
+
+        <View style={styles.footer}>
+          <TextInput
+            value={newName}
+            onChangeText={setNewName}
+            onSubmitEditing={handleAddExercise}
+            placeholder="Add exercise…"
+            placeholderTextColor={colors.dim}
+            selectionColor={colors.accent}
+            maxLength={80}
+            accessibilityLabel="New exercise name"
+            style={styles.addInput}
+          />
+          <Pressable
+            onPress={handleAddExercise}
+            accessibilityRole="button"
+            accessibilityLabel="Add exercise"
+            disabled={addExercise.isPending}
+            style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+          >
+            <Icon name="plus" size={22} color={colors.accentDark} />
+          </Pressable>
+        </View>
       </KeyboardAvoidingView>
     </Screen>
   );
@@ -198,28 +241,44 @@ export default function LogScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  list: { gap: space.md, paddingBottom: space.xxl },
-  saveError: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, paddingBottom: space.sm },
-  addRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.md },
+  list: { gap: 14, paddingBottom: space.xl },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  weekChip: {
+    height: 30,
+    paddingHorizontal: space.md,
+    borderRadius: radius.chip,
+    backgroundColor: colors.card,
+    justifyContent: 'center',
+  },
+  weekChipLabel: { ...type.label, fontSize: 12, letterSpacing: 0.6, color: colors.muted },
+  status: { width: 56, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  savingDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.accent },
+  savingLabel: { ...type.micro, color: colors.accent },
+  savedLabel: { ...type.micro, color: colors.dim },
+  saveError: { ...type.bodySm, color: colors.danger, paddingBottom: space.sm },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingTop: space.md,
+    paddingBottom: space.md,
+  },
   addInput: {
     flex: 1,
-    minHeight: HIT_SLOP_MIN,
+    minHeight: 48,
     backgroundColor: colors.card2,
-    borderWidth: 1,
-    borderColor: colors.line,
     borderRadius: radius.input,
-    paddingHorizontal: space.md,
-    fontFamily: fonts.body,
-    fontSize: 15,
+    paddingHorizontal: 14,
+    ...type.body,
     color: colors.text,
   },
   addButton: {
-    minHeight: HIT_SLOP_MIN,
-    justifyContent: 'center',
-    paddingHorizontal: space.lg,
+    width: 48,
+    height: 48,
     borderRadius: radius.input,
     backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pressed: { opacity: 0.9 },
-  addButtonLabel: { fontFamily: fonts.bodyMed, fontSize: 15, color: colors.accentDark },
 });

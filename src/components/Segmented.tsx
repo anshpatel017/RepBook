@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fonts, radius, space, HIT_SLOP_MIN } from '@/theme/tokens';
+import { colors, radius, space, type } from '@/theme/tokens';
 
 type SegmentedProps<T extends string> = {
   options: readonly { value: T; label: string }[];
@@ -8,7 +8,7 @@ type SegmentedProps<T extends string> = {
   onChange: (value: T) => void;
 };
 
-/** Login's [Member] [Admin] tabs, and any other two-way switch. */
+/** Login's [Member] [Admin] tabs. Selected segment is solid lime now. */
 export function Segmented<T extends string>({ options, value, onChange }: SegmentedProps<T>) {
   return (
     <View style={styles.track} accessibilityRole="tablist">
@@ -34,20 +34,18 @@ const styles = StyleSheet.create({
   track: {
     flexDirection: 'row',
     backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.line,
     borderRadius: radius.chip,
     padding: space.xs,
     gap: space.xs,
   },
   segment: {
     flex: 1,
-    minHeight: HIT_SLOP_MIN - 8,
+    minHeight: 40,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.chip,
   },
-  segmentSelected: { backgroundColor: colors.accentDark },
-  label: { fontFamily: fonts.bodyMed, fontSize: 14, color: colors.muted },
-  labelSelected: { color: colors.accent },
+  segmentSelected: { backgroundColor: colors.accent },
+  label: { ...type.bodyMed, fontSize: 14, color: colors.muted },
+  labelSelected: { color: colors.accentDark },
 });

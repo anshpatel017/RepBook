@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { colors, fonts, radius, space, HIT_SLOP_MIN } from '@/theme/tokens';
+import { colors, radius, space, type } from '@/theme/tokens';
 
 /** Settings row with a switch. */
 export function SwitchRow({
@@ -24,8 +24,9 @@ export function SwitchRow({
         value={value}
         onValueChange={onChange}
         accessibilityLabel={label}
-        trackColor={{ false: colors.line, true: colors.accentDark }}
-        thumbColor={value ? colors.accent : colors.dim}
+        trackColor={{ false: colors.line, true: colors.accent }}
+        thumbColor={value ? colors.bg : colors.dim}
+        ios_backgroundColor={colors.line}
       />
     </View>
   );
@@ -80,19 +81,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: space.md,
-    minHeight: HIT_SLOP_MIN,
+    minHeight: 68,
+    paddingVertical: space.md,
   },
   labels: { flex: 1, gap: 2 },
-  label: { fontFamily: fonts.bodyMed, fontSize: 15, color: colors.text },
-  hint: { fontFamily: fonts.body, fontSize: 12, lineHeight: 16, color: colors.dim },
+  label: { ...type.bodyMed, color: colors.text },
+  hint: { ...type.bodySm, fontSize: 12, lineHeight: 16, color: colors.dim },
   choices: {
     flexDirection: 'row',
     backgroundColor: colors.card2,
     borderRadius: radius.chip,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 2,
-    gap: 2,
+    padding: 3,
+    gap: 3,
   },
   choice: {
     minWidth: 48,
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.chip,
     paddingHorizontal: space.sm,
   },
-  choiceSelected: { backgroundColor: colors.accentDark },
-  choiceLabel: { fontFamily: fonts.bodyMed, fontSize: 13, color: colors.muted },
-  choiceLabelSelected: { color: colors.accent },
+  choiceSelected: { backgroundColor: colors.accent },
+  choiceLabel: { ...type.bodyMed, fontSize: 13, color: colors.dim },
+  choiceLabelSelected: { color: colors.accentDark },
 });

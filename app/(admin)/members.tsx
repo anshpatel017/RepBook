@@ -1,22 +1,38 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  FlatList,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import type { MemberActivity } from '@/api/admin';
 import { Button } from '@/components/Button';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { CredentialCard } from '@/components/CredentialCard';
+import { Icon, type IconName } from '@/components/Icon';
 import { MemberRow } from '@/components/MemberRow';
 import { EmptyState, ErrorState, LoadingState, Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import {
+  daysSince,
+  useMembers,
+  useResetMemberPassword,
+  useSetMemberActive,
+} from '@/hooks/useMembers';
 import { useGymName, useProfile } from '@/hooks/useProfile';
-import { useMembers, useResetMemberPassword, useSetMemberActive } from '@/hooks/useMembers';
 import { useSession } from '@/hooks/useSession';
-import { colors, fonts, radius, space, HIT_SLOP_MIN } from '@/theme/tokens';
+import { colors, radius, space, type } from '@/theme/tokens';
 
 type Pending = { kind: 'deactivate' | 'reactivate'; member: MemberActivity } | null;
 
-/** Gym admin members list (wireframe screen 7). Aggregates only — never logs. */
+/** Gym admin members list. Aggregates only — never logs, never weights. */
 export default function MembersScreen() {
   const router = useRouter();
   const { session } = useSession();
@@ -66,10 +82,26 @@ export default function MembersScreen() {
     [setActive],
   );
 
+  const idleDays = selected ? daysSince(selected.last_workout_at) : null;
+
+  /** Opens WhatsApp with a message to the member. No workout details, ever. */
+  const nudge = useCallback(async () => {
+    if (!selected?.phone) return;
+    const digits = selected.phone.replace(/\D/g, '');
+    const name = selected.display_name?.split(' ')[0] ?? 'there';
+    const message = `Hi ${name}, this is ${gymName ?? 'your gym'} — we haven't seen you in a while. See you at the gym soon!`;
+    const url = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+    try {
+      await Linking.openURL(url);
+    } catch {
+      setError('Could not open WhatsApp on this device.');
+    }
+  }, [selected, gymName]);
+
   return (
     <Screen>
       <ScreenHeader
-        title={gymName ?? 'YOUR GYM'}
+        title={(gymName ?? 'Your gym').toUpperCase()}
         subtitle={`${counts.total} member${counts.total === 1 ? '' : 's'} · ${counts.active} active`}
         right={
           <Pressable
@@ -78,22 +110,23 @@ export default function MembersScreen() {
             accessibilityLabel="Settings"
             style={styles.gear}
           >
-            <Text style={styles.gearGlyph}>⚙</Text>
+            <Icon name="settings" size={20} color={colors.muted} />
           </Pressable>
         }
       />
 
-      <View style={styles.searchRow}>
+      <View style={styles.search}>
+        <Icon name="search" size={18} color={colors.dim} />
         <TextInput
           value={search}
           onChangeText={setSearch}
-          placeholder="🔍  Search name or phone"
+          placeholder="Search name or phone"
           placeholderTextColor={colors.dim}
           selectionColor={colors.accent}
           autoCapitalize="none"
           autoCorrect={false}
           accessibilityLabel="Search members"
-          style={styles.search}
+          style={styles.searchInput}
         />
       </View>
 
@@ -113,11 +146,12 @@ export default function MembersScreen() {
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
           ListEmptyComponent={
             search ? (
               <EmptyState title="No match" hint="Try a different name or number." />
             ) : (
-              <EmptyState title="No members yet" hint="Add your first member 👇" />
+              <EmptyState title="No members yet" hint="Add your first member below." />
             )
           }
           renderItem={({ item }) => <MemberRow member={item} onPress={setSelected} />}
@@ -125,10 +159,10 @@ export default function MembersScreen() {
       )}
 
       <View style={styles.footer}>
-        <Button label="＋ Add member" onPress={() => router.push('/add-member')} />
+        <Button label="ADD MEMBER" icon="plus" onPress={() => router.push('/add-member')} />
       </View>
 
-      {/* Member sheet: reset password / deactivate / reactivate */}
+      {/* Member sheet: reset password / nudge / deactivate */}
       <Modal
         visible={selected !== null}
         transparent
@@ -141,49 +175,77 @@ export default function MembersScreen() {
               contentContainerStyle={styles.sheetContent}
               showsVerticalScrollIndicator={false}
             >
-            <Text style={styles.sheetTitle}>{selected?.display_name ?? 'Member'}</Text>
-            <Text style={styles.sheetMeta}>
-              {selected?.is_active ? 'Active' : 'Inactive'} ·{' '}
-              {selected?.weeks_logged ?? 0} weeks logged
-            </Text>
+              <View style={styles.grabber} />
 
-            {/* Sheet-level errors must render INSIDE the sheet — anything in the
-                screen body sits behind the modal and is never seen. */}
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+              <Text style={styles.sheetTitle}>{selected?.display_name ?? 'Member'}</Text>
+              <Text style={styles.sheetMeta}>
+                {selected?.is_active ? 'Active' : 'Inactive'} · {selected?.weeks_logged ?? 0} weeks
+                logged
+                {idleDays !== null && idleDays > 14 ? (
+                  <Text style={styles.idle}> · idle {idleDays} days</Text>
+                ) : null}
+              </Text>
 
-            {newPassword && selected ? (
-              <CredentialCard
-                title="New password issued"
-                identifierLabel="Phone"
-                identifier={selected.phone ?? ''}
-                password={newPassword}
-                whatsappTo={selected.phone}
-              />
-            ) : (
-              <View style={styles.sheetActions}>
-                <Button
-                  label="Reset password"
-                  variant="secondary"
-                  loading={resetPassword.isPending}
-                  onPress={() => void doReset()}
+              {/* Sheet-level errors must render INSIDE the sheet — anything in the
+                  screen body sits behind the modal and is never seen. */}
+              {error ? <Text style={styles.error}>{error}</Text> : null}
+
+              {newPassword && selected ? (
+                <CredentialCard
+                  title="New password issued"
+                  identifierLabel="Phone"
+                  identifier={selected.phone ?? ''}
+                  password={newPassword}
+                  whatsappTo={selected.phone}
                 />
-                {selected?.is_active ? (
-                  <Button
-                    label="Deactivate member"
-                    variant="danger"
-                    onPress={() => selected && setPending({ kind: 'deactivate', member: selected })}
+              ) : (
+                <View style={styles.actions}>
+                  <ActionRow
+                    icon="key"
+                    tint={colors.accent}
+                    label="Reset password"
+                    hint="Issues a new temporary password"
+                    onPress={() => void doReset()}
                   />
-                ) : (
-                  <Button
-                    label="Reactivate member"
-                    variant="primary"
-                    onPress={() => selected && setPending({ kind: 'reactivate', member: selected })}
-                  />
-                )}
-              </View>
-            )}
+                  {selected?.phone ? (
+                    <>
+                      <View style={styles.actionDivider} />
+                      <ActionRow
+                        icon="message-circle"
+                        tint={colors.muted}
+                        label="Nudge on WhatsApp"
+                        hint={
+                          idleDays !== null && idleDays > 14
+                            ? `Hasn't trained in ${idleDays} days`
+                            : 'Send them a message'
+                        }
+                        onPress={() => void nudge()}
+                      />
+                    </>
+                  ) : null}
+                </View>
+              )}
 
-            <Button label="Close" variant="secondary" onPress={closeSheet} />
+              <Text style={styles.privacy}>
+                You see attendance only. Weights, reps and workout history belong to the member.
+              </Text>
+
+              <View style={styles.sheetDivider} />
+
+              {selected?.is_active ? (
+                <Button
+                  label="Deactivate member"
+                  variant="danger"
+                  icon="user-x"
+                  onPress={() => selected && setPending({ kind: 'deactivate', member: selected })}
+                />
+              ) : (
+                <Button
+                  label="Reactivate member"
+                  onPress={() => selected && setPending({ kind: 'reactivate', member: selected })}
+                />
+              )}
+              <Button label="Close" variant="secondary" onPress={closeSheet} />
             </ScrollView>
           </Pressable>
         </Pressable>
@@ -212,35 +274,88 @@ export default function MembersScreen() {
   );
 }
 
+function ActionRow({
+  icon,
+  tint,
+  label,
+  hint,
+  onPress,
+}: {
+  icon: IconName;
+  tint: string;
+  label: string;
+  hint: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}
+    >
+      <Icon name={icon} size={19} color={tint} />
+      <View style={styles.actionText}>
+        <Text style={styles.actionLabel}>{label}</Text>
+        <Text style={styles.actionHint}>{hint}</Text>
+      </View>
+      <Icon name="chevron-right" size={18} color={colors.dim} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  gear: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  gearGlyph: { fontSize: 20, color: colors.muted },
-  searchRow: { paddingBottom: space.sm },
+  gear: { width: 40, height: 40, marginRight: -8, alignItems: 'center', justifyContent: 'center' },
   search: {
-    minHeight: HIT_SLOP_MIN,
-    backgroundColor: colors.card2,
-    borderWidth: 1,
-    borderColor: colors.line,
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm + 2,
+    backgroundColor: colors.card,
     borderRadius: radius.input,
-    paddingHorizontal: space.md,
-    fontFamily: fonts.body,
-    fontSize: 15,
-    color: colors.text,
+    paddingHorizontal: 14,
+    marginBottom: space.md,
   },
-  error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, paddingBottom: space.sm },
-  list: { gap: space.sm, paddingBottom: space.md },
+  searchInput: { flex: 1, ...type.body, color: colors.text },
+  error: { ...type.bodySm, color: colors.danger, paddingBottom: space.sm },
+  list: { backgroundColor: colors.card, borderRadius: 14, overflow: 'hidden', paddingBottom: 0 },
+  separator: { height: 1, backgroundColor: colors.line, marginLeft: 66 },
   footer: { paddingVertical: space.md },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: colors.bg,
-    borderTopColor: colors.line,
-    borderTopWidth: 1,
-    borderTopLeftRadius: radius.card,
-    borderTopRightRadius: radius.card,
+    backgroundColor: colors.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     maxHeight: '88%',
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
   },
-  sheetContent: { padding: space.lg, gap: space.md },
-  sheetTitle: { fontFamily: fonts.display, fontSize: 26, color: colors.text },
-  sheetMeta: { fontFamily: fonts.body, fontSize: 13, color: colors.muted },
-  sheetActions: { gap: space.sm },
+  sheetContent: { padding: space.xl, paddingTop: space.sm, gap: space.md },
+  grabber: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.line,
+    marginBottom: space.sm,
+  },
+  sheetTitle: { ...type.display2, color: colors.text },
+  sheetMeta: { ...type.bodySm, color: colors.muted },
+  idle: { color: colors.warn },
+  actions: { backgroundColor: colors.card2, borderRadius: 14, overflow: 'hidden' },
+  actionDivider: { height: 1, backgroundColor: colors.line, marginLeft: 47 },
+  actionRow: {
+    minHeight: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingHorizontal: space.lg,
+  },
+  pressed: { opacity: 0.85 },
+  actionText: { flex: 1, gap: 1 },
+  actionLabel: { ...type.bodyMed, color: colors.text },
+  actionHint: { ...type.micro, color: colors.dim },
+  privacy: { ...type.bodySm, fontSize: 12, lineHeight: 18, color: colors.dim },
+  sheetDivider: { height: 1, backgroundColor: colors.line },
 });

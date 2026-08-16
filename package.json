@@ -14,11 +14,13 @@
     "db:status": "npx --yes supabase migration list --linked",
     "gen:types": "npx --yes supabase gen types typescript --linked > src/types/db.ts",
     "postinstall": "setup-skia-web public",
-    "functions:deploy": "npx --yes supabase functions deploy"
+    "functions:deploy": "npx --yes supabase functions deploy",
+    "build:web": "expo export --platform web && node scripts/patch-web-html.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/barlow-condensed": "^0.4.1",
     "@expo-google-fonts/inter": "^0.4.2",
+    "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@sentry/react-native": "~7.2.0",
     "@shopify/react-native-skia": "2.2.12",

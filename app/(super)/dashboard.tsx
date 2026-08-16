@@ -6,9 +6,10 @@ import type { GymStats } from '@/api/super';
 import { Button } from '@/components/Button';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { CredentialCard } from '@/components/CredentialCard';
+import { Icon } from '@/components/Icon';
 import { EmptyState, ErrorState, LoadingState, Screen } from '@/components/Screen';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { StatCard } from '@/components/StatCard';
+import { StatCard } from '@/components/StatRow';
 import {
   useGymAdmins,
   usePlatformStats,
@@ -76,7 +77,7 @@ export default function DashboardScreen() {
             accessibilityLabel="Settings"
             style={styles.gear}
           >
-            <Text style={styles.gearGlyph}>⚙</Text>
+            <Icon name="settings" size={20} color={colors.muted} />
           </Pressable>
         }
       />
@@ -106,7 +107,7 @@ export default function DashboardScreen() {
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
-              <EmptyState title="No gyms yet" hint="Onboard your first gym 👇" />
+              <EmptyState title="No gyms yet" hint="Onboard your first gym below." />
             }
             renderItem={({ item }) => (
               <Pressable
@@ -135,7 +136,7 @@ export default function DashboardScreen() {
           />
 
           <View style={styles.footer}>
-            <Button label="＋ Add gym" onPress={() => router.push('/add-gym')} />
+            <Button label="ADD GYM" icon="plus" onPress={() => router.push('/add-gym')} />
           </View>
         </>
       )}
@@ -284,7 +285,12 @@ const styles = StyleSheet.create({
   },
   suspendedLabel: { fontFamily: fonts.bodyMed, fontSize: 11, color: colors.danger },
   footer: { paddingVertical: space.md },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
   sheet: {
     backgroundColor: colors.bg,
     borderTopColor: colors.line,

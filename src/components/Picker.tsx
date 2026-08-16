@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fonts, radius, space, HIT_SLOP_MIN } from '@/theme/tokens';
+import { Icon } from '@/components/Icon';
+import { colors, fonts, radius, space, type, HIT_SLOP_MIN } from '@/theme/tokens';
 
 type Option<T extends string | number> = { value: T; label: string };
 
@@ -12,11 +13,7 @@ type PickerProps<T extends string | number> = {
   onChange: (value: T) => void;
 };
 
-/**
- * Compact dropdown ("Day: Monday ▾", "Week 1 ▾") used by the Charts screen.
- * A Modal list rather than a native picker so it looks identical on both
- * platforms and stays inside the dark token set.
- */
+/** Compact dropdown used by Charts. Square-ish trigger, chevron icon. */
 export function Picker<T extends string | number>({
   label,
   value,
@@ -34,9 +31,11 @@ export function Picker<T extends string | number>({
         accessibilityLabel={`${label}: ${selected?.label ?? 'none'}`}
         style={({ pressed }) => [styles.trigger, pressed && styles.pressed]}
       >
-        <Text style={styles.triggerLabel} numberOfLines={1}>
-          {label}: <Text style={styles.triggerValue}>{selected?.label ?? '—'}</Text> ▾
+        <Text style={styles.triggerLabel}>{label}</Text>
+        <Text style={styles.triggerValue} numberOfLines={1}>
+          {selected?.label ?? '—'}
         </Text>
+        <Icon name="chevron-down" size={15} color={colors.dim} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -60,7 +59,7 @@ export function Picker<T extends string | number>({
                     <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}>
                       {option.label}
                     </Text>
-                    {isSelected ? <Text style={styles.check}>✓</Text> : null}
+                    {isSelected ? <Icon name="check" size={16} color={colors.accent} /> : null}
                   </Pressable>
                 );
               })}
@@ -75,39 +74,31 @@ export function Picker<T extends string | number>({
 const styles = StyleSheet.create({
   trigger: {
     flex: 1,
-    minHeight: HIT_SLOP_MIN - 6,
-    justifyContent: 'center',
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: space.md,
-    borderRadius: radius.chip,
-    borderWidth: 1,
-    borderColor: colors.line,
+    borderRadius: radius.row,
     backgroundColor: colors.card,
   },
   pressed: { opacity: 0.8 },
-  triggerLabel: { fontFamily: fonts.body, fontSize: 13, color: colors.muted },
-  triggerValue: { fontFamily: fonts.bodyMed, color: colors.text },
+  triggerLabel: { ...type.bodySm, fontSize: 12, color: colors.dim },
+  triggerValue: { ...type.bodyMed, flex: 1, fontSize: 13, color: colors.text },
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: colors.scrim,
     justifyContent: 'flex-end',
     padding: space.lg,
   },
   sheet: {
     backgroundColor: colors.card,
-    borderColor: colors.line,
-    borderWidth: 1,
     borderRadius: radius.card,
     padding: space.md,
     gap: space.sm,
     maxHeight: '70%',
   },
-  sheetTitle: {
-    fontFamily: fonts.body,
-    fontSize: 11,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: colors.dim,
-  },
+  sheetTitle: { ...type.label, fontSize: 11, color: colors.dim },
   list: { flexGrow: 0 },
   option: {
     flexDirection: 'row',
@@ -116,7 +107,6 @@ const styles = StyleSheet.create({
     minHeight: HIT_SLOP_MIN,
     paddingHorizontal: space.sm,
   },
-  optionLabel: { flex: 1, fontFamily: fonts.body, fontSize: 15, color: colors.text },
+  optionLabel: { ...type.body, flex: 1, color: colors.text },
   optionLabelSelected: { fontFamily: fonts.bodyMed, color: colors.accent },
-  check: { fontFamily: fonts.bodyMed, fontSize: 14, color: colors.accent },
 });

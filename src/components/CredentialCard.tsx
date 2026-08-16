@@ -2,8 +2,9 @@ import * as Clipboard from 'expo-clipboard';
 import { useCallback, useState } from 'react';
 import { Linking, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
+import { Icon } from '@/components/Icon';
 import { formatPhone } from '@/lib/phone';
-import { colors, fonts, radius, space, HIT_SLOP_MIN } from '@/theme/tokens';
+import { colors, fonts, radius, space, type } from '@/theme/tokens';
 
 type CredentialCardProps = {
   title?: string;
@@ -16,9 +17,10 @@ type CredentialCardProps = {
 };
 
 /**
- * Generated credentials, displayed EXACTLY once (CLAUDE.md rule 6).
- * Nothing here is persisted or logged — the values live in the caller's state
- * until the screen is dismissed.
+ * Generated credentials, displayed EXACTLY once. The password is the largest
+ * thing on the screen (display-scale, lime) and Copy is the primary action —
+ * this must look like something you copy immediately, not dismiss.
+ * Nothing here is persisted or logged.
  */
 export function CredentialCard({
   title = 'Account created',
@@ -41,8 +43,7 @@ export function CredentialCard({
     const digits = (whatsappTo ?? '').replace(/\D/g, '');
     const url = `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
     try {
-      const opened = await Linking.canOpenURL(url);
-      if (opened) {
+      if (await Linking.canOpenURL(url)) {
         await Linking.openURL(url);
         return;
       }
@@ -53,78 +54,115 @@ export function CredentialCard({
   }, [message, whatsappTo]);
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>✅ {title}</Text>
-
-      <View style={styles.rows}>
-        <Row label={identifierLabel} value={identifierLabel === 'Phone' ? formatPhone(identifier) : identifier} />
-        <Row label="Password" value={password} mono />
+    <View style={styles.outer}>
+      <View style={styles.titleRow}>
+        <View style={styles.tick}>
+          <Icon name="check" size={14} color={colors.accentDark} />
+        </View>
+        <Text style={styles.title}>{title.toUpperCase()}</Text>
       </View>
 
-      <View style={styles.actions}>
-        <Pressable
-          onPress={() => void copy()}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.action, pressed && styles.pressed]}
-        >
-          <Text style={styles.actionLabel}>{copied ? '✓ Copied' : '📋 Copy'}</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => void shareToWhatsApp()}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.action, styles.actionPrimary, pressed && styles.pressed]}
-        >
-          <Text style={[styles.actionLabel, styles.actionLabelPrimary]}>🟢 WhatsApp</Text>
-        </Pressable>
+      <View style={styles.card}>
+        <View style={styles.block}>
+          <Text style={styles.label}>{identifierLabel}</Text>
+          <Text style={styles.identifier} selectable>
+            {identifierLabel === 'Phone' ? formatPhone(identifier) : identifier}
+          </Text>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.block}>
+          <Text style={styles.label}>Temporary password</Text>
+          <Text style={styles.password} selectable>
+            {password}
+          </Text>
+        </View>
+
+        <View style={styles.actions}>
+          <Pressable
+            onPress={() => void copy()}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.copy, pressed && styles.pressed]}
+          >
+            <Icon name={copied ? 'check' : 'copy'} size={17} color={colors.accentDark} />
+            <Text style={styles.copyLabel}>{copied ? 'Copied' : 'Copy'}</Text>
+          </Pressable>
+          {whatsappTo ? (
+            <Pressable
+              onPress={() => void shareToWhatsApp()}
+              accessibilityRole="button"
+              accessibilityLabel="Send on WhatsApp"
+              style={({ pressed }) => [styles.share, pressed && styles.pressed]}
+            >
+              <Icon name="message-circle" size={20} color={colors.muted} />
+            </Pressable>
+          ) : null}
+        </View>
+
+        <View style={styles.warning}>
+          <Icon name="alert-triangle" size={15} color={colors.warn} />
+          <Text style={styles.warningLabel}>
+            Shown only once. Share it now — they set their own password on first sign-in.
+          </Text>
+        </View>
       </View>
-
-      <Text style={styles.warning}>
-        ⚠ Shown only once. Share it now — they set their own password on first sign-in.
-      </Text>
-    </View>
-  );
-}
-
-function Row({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, mono && styles.rowValueMono]} selectable>
-        {value}
-      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.card,
-    borderColor: colors.accent,
-    borderWidth: 1,
-    borderRadius: radius.card,
-    padding: space.lg,
-    gap: space.md,
-  },
-  title: { fontFamily: fonts.display, fontSize: 22, color: colors.text },
-  rows: { gap: space.sm },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
-  rowLabel: { fontFamily: fonts.body, fontSize: 13, color: colors.muted },
-  rowValue: { flex: 1, textAlign: 'right', fontFamily: fonts.bodyMed, fontSize: 15, color: colors.text },
-  rowValueMono: { fontFamily: fonts.display, fontSize: 22, letterSpacing: 1, color: colors.accent },
-  actions: { flexDirection: 'row', gap: space.sm },
-  action: {
-    flex: 1,
-    minHeight: HIT_SLOP_MIN,
+  outer: { gap: space.lg },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm + 2 },
+  tick: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.input,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.card2,
   },
-  actionPrimary: { backgroundColor: colors.accent, borderColor: colors.accent },
+  title: { ...type.display3, fontSize: 26, color: colors.text },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+    padding: space.lg + 2,
+    gap: space.lg,
+  },
+  block: { gap: 4 },
+  label: { ...type.label, fontSize: 11, letterSpacing: 1.2, color: colors.dim },
+  identifier: { ...type.display3, fontSize: 26, letterSpacing: 1, color: colors.text },
+  password: {
+    fontFamily: fonts.display,
+    fontSize: 40,
+    lineHeight: 42,
+    letterSpacing: 3,
+    color: colors.accent,
+  },
+  divider: { height: 1, backgroundColor: colors.line },
+  actions: { flexDirection: 'row', gap: space.sm },
+  copy: {
+    flex: 1,
+    height: 52,
+    borderRadius: radius.input,
+    backgroundColor: colors.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+  },
+  copyLabel: { ...type.bodyMed, color: colors.accentDark },
+  share: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.input,
+    backgroundColor: colors.card2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   pressed: { opacity: 0.85 },
-  actionLabel: { fontFamily: fonts.bodyMed, fontSize: 14, color: colors.text },
-  actionLabelPrimary: { color: colors.accentDark },
-  warning: { fontFamily: fonts.body, fontSize: 12, lineHeight: 18, color: colors.muted },
+  warning: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start' },
+  warningLabel: { ...type.bodySm, flex: 1, fontSize: 12, color: colors.warn },
 });

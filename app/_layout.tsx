@@ -21,6 +21,7 @@ import { ErrorState, LoadingState } from '@/components/Screen';
 import { useProfile } from '@/hooks/useProfile';
 import { useSession } from '@/hooks/useSession';
 import { initMonitoring } from '@/lib/monitoring';
+import { rootMotion } from '@/theme/motion';
 import { destinationFor, needsRedirect } from '@/lib/routing';
 import { colors, fonts, space } from '@/theme/tokens';
 
@@ -90,7 +91,7 @@ export default function RootLayout() {
             screenOptions={{
               headerShown: false,
               contentStyle: { backgroundColor: colors.bg },
-              animation: 'slide_from_right',
+              ...rootMotion,
             }}
           >
             {/* Forced password change is blocking: no swipe-back out of it. */}

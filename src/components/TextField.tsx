@@ -1,24 +1,30 @@
 import { forwardRef } from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
-import { colors, fonts, radius, space, HIT_SLOP_MIN } from '@/theme/tokens';
+import { colors, radius, space, type, CONTROL } from '@/theme/tokens';
 
 type TextFieldProps = TextInputProps & {
   label: string;
   /** Static, non-editable prefix — used for the +91 country code. */
   prefix?: string;
   error?: string;
+  hint?: string;
 };
 
 export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
-  { label, prefix, error, style, ...inputProps },
+  { label, prefix, error, hint, style, ...inputProps },
   ref,
 ) {
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>{label}</Text>
       <View style={[styles.field, Boolean(error) && styles.fieldError]}>
-        {prefix ? <Text style={styles.prefix}>{prefix}</Text> : null}
+        {prefix ? (
+          <>
+            <Text style={styles.prefix}>{prefix}</Text>
+            <View style={styles.prefixDivider} />
+          </>
+        ) : null}
         <TextInput
           ref={ref}
           accessibilityLabel={label}
@@ -29,38 +35,27 @@ export const TextField = forwardRef<TextInput, TextFieldProps>(function TextFiel
         />
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      {!error && hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
   );
 });
 
 const styles = StyleSheet.create({
-  wrapper: { gap: space.xs },
-  label: {
-    fontFamily: fonts.bodyMed,
-    fontSize: 12,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: colors.muted,
-  },
+  wrapper: { gap: 6 },
+  label: { ...type.label, color: colors.dim },
   field: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: HIT_SLOP_MIN,
+    minHeight: CONTROL.field,
     backgroundColor: colors.card2,
-    borderWidth: 1,
-    borderColor: colors.line,
     borderRadius: radius.input,
-    paddingHorizontal: space.md,
-    gap: space.sm,
+    paddingHorizontal: 14,
+    gap: space.sm + 2,
   },
-  fieldError: { borderColor: colors.danger },
-  prefix: { fontFamily: fonts.bodyMed, fontSize: 16, color: colors.muted },
-  input: {
-    flex: 1,
-    paddingVertical: space.md,
-    fontFamily: fonts.body,
-    fontSize: 16,
-    color: colors.text,
-  },
-  error: { fontFamily: fonts.body, fontSize: 12, color: colors.danger },
+  fieldError: { borderWidth: 1.5, borderColor: colors.danger, paddingHorizontal: 12.5 },
+  prefix: { ...type.bodyMed, fontSize: 15, color: colors.dim },
+  prefixDivider: { width: 1, height: 22, backgroundColor: colors.line },
+  input: { flex: 1, ...type.body, fontSize: 16, color: colors.text, paddingVertical: space.md },
+  error: { ...type.bodySm, fontSize: 12, color: colors.danger },
+  hint: { ...type.micro, color: colors.dim },
 });

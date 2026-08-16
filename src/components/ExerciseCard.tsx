@@ -3,23 +3,30 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import type { DayHistory, DayLogEntry, LoggedSet } from '@/api/sets';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { Icon } from '@/components/Icon';
+import { PRBanner } from '@/components/PRBanner';
 import { SetRow } from '@/components/SetRow';
 import { kgToDisplay, type Unit } from '@/lib/units';
-import { colors, fonts, radius, space, HIT_SLOP_MIN } from '@/theme/tokens';
+import { colors, fonts, radius, space, type, CONTROL } from '@/theme/tokens';
 
 type ExerciseCardProps = {
   entry: DayLogEntry;
   unit: Unit;
-  /** Last week's sets + the pre-week best, for ghosts and the PR chip (FR-18). */
+  /** Last week's sets + the pre-week best, for delta chips and the PR banner. */
   history?: DayHistory | null;
-  onSaveSet: (exerciseId: string, setNumber: number, weightKg: number | null, reps: number | null) => void;
+  onSaveSet: (
+    exerciseId: string,
+    setNumber: number,
+    weightKg: number | null,
+    reps: number | null,
+  ) => void;
   onAddSet: (entry: DayLogEntry) => void;
   onRemoveSet: (exerciseId: string, set: LoggedSet) => void;
   onRename: (exerciseId: string, name: string) => void;
   onDelete: (exerciseId: string) => void;
 };
 
-/** One exercise on the log screen (wireframe screen 4). */
+/** One exercise on the log screen. The PR is a banner now, not a chip. */
 export const ExerciseCard = memo(function ExerciseCard({
   entry,
   unit,
@@ -32,6 +39,7 @@ export const ExerciseCard = memo(function ExerciseCard({
 }: ExerciseCardProps) {
   const [renaming, setRenaming] = useState(false);
   const [draftName, setDraftName] = useState(entry.name);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
   const saveSet = useCallback(
@@ -40,7 +48,10 @@ export const ExerciseCard = memo(function ExerciseCard({
     [entry.id, onSaveSet],
   );
 
-  const removeSet = useCallback((set: LoggedSet) => onRemoveSet(entry.id, set), [entry.id, onRemoveSet]);
+  const removeSet = useCallback(
+    (set: LoggedSet) => onRemoveSet(entry.id, set),
+    [entry.id, onRemoveSet],
+  );
 
   const commitRename = useCallback(() => {
     const trimmed = draftName.trim();
@@ -53,7 +64,8 @@ export const ExerciseCard = memo(function ExerciseCard({
   }, [draftName, entry.id, entry.name, onRename]);
 
   const bestThisWeek = entry.sets.reduce<number | null>(
-    (best, set) => (set.weight_kg !== null && (best === null || set.weight_kg > best) ? set.weight_kg : best),
+    (best, set) =>
+      set.weight_kg !== null && (best === null || set.weight_kg > best) ? set.weight_kg : best,
     null,
   );
   const bestBefore = history?.bestBefore[entry.id];
@@ -63,151 +75,179 @@ export const ExerciseCard = memo(function ExerciseCard({
       : null;
 
   return (
-    <View style={styles.card}>
-      <View style={styles.header}>
-        {renaming ? (
-          <TextInput
-            value={draftName}
-            onChangeText={setDraftName}
-            onSubmitEditing={commitRename}
-            onBlur={commitRename}
-            autoFocus
-            selectTextOnFocus
-            maxLength={80}
-            selectionColor={colors.accent}
-            accessibilityLabel="Exercise name"
-            style={styles.nameInput}
-          />
+    <View style={styles.wrapper}>
+      {prGain !== null && bestThisWeek !== null ? (
+        <PRBanner
+          exercise={entry.name}
+          best={kgToDisplay(bestThisWeek, unit)}
+          gain={prGain}
+          unit={unit}
+        />
+      ) : null}
+
+      <View style={styles.card}>
+        <View style={styles.header}>
+          {renaming ? (
+            <TextInput
+              value={draftName}
+              onChangeText={setDraftName}
+              onSubmitEditing={commitRename}
+              onBlur={commitRename}
+              autoFocus
+              selectTextOnFocus
+              maxLength={80}
+              selectionColor={colors.accent}
+              accessibilityLabel="Exercise name"
+              style={styles.nameInput}
+            />
+          ) : (
+            <View style={styles.titles}>
+              <Text style={styles.name} numberOfLines={2}>
+                {entry.name}
+              </Text>
+              <Text style={styles.meta}>
+                {bestBefore === undefined
+                  ? 'No history yet'
+                  : `Last week best ${kgToDisplay(bestBefore, unit)} ${unit}`}
+                {' · '}
+                {entry.sets.length} {entry.sets.length === 1 ? 'set' : 'sets'}
+              </Text>
+            </View>
+          )}
+
+          <Pressable
+            onPress={() => (renaming ? commitRename() : setMenuOpen((open) => !open))}
+            accessibilityRole="button"
+            accessibilityLabel={renaming ? 'Save name' : `Options for ${entry.name}`}
+            style={styles.iconButton}
+          >
+            <Icon
+              name={renaming ? 'check' : 'more-vertical'}
+              size={18}
+              color={renaming ? colors.accent : colors.dim}
+            />
+          </Pressable>
+        </View>
+
+        {menuOpen && !renaming ? (
+          <View style={styles.menu}>
+            <Pressable
+              onPress={() => {
+                setMenuOpen(false);
+                setRenaming(true);
+              }}
+              accessibilityRole="button"
+              style={styles.menuItem}
+            >
+              <Icon name="edit-2" size={16} color={colors.text} />
+              <Text style={styles.menuLabel}>Rename</Text>
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
+              onPress={() => {
+                setMenuOpen(false);
+                setConfirming(true);
+              }}
+              accessibilityRole="button"
+              style={styles.menuItem}
+            >
+              <Icon name="trash-2" size={16} color={colors.danger} />
+              <Text style={[styles.menuLabel, styles.menuLabelDanger]}>Delete exercise</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {entry.sets.length === 0 ? (
+          <Text style={styles.noSets}>No sets yet — add your first below.</Text>
         ) : (
-          <Text style={styles.name} numberOfLines={2}>
-            {entry.name}
-          </Text>
+          <View style={styles.sets}>
+            {entry.sets.map((set, index) => (
+              <SetRow
+                key={set.id}
+                index={index + 1}
+                set={set}
+                unit={unit}
+                ghost={history?.lastWeek[`${entry.id}:${set.set_number}`] ?? null}
+                onSave={saveSet}
+                onRemove={removeSet}
+              />
+            ))}
+          </View>
         )}
 
         <Pressable
-          onPress={() => (renaming ? commitRename() : setRenaming(true))}
+          onPress={() => onAddSet(entry)}
           accessibilityRole="button"
-          accessibilityLabel={renaming ? 'Save name' : `Rename ${entry.name}`}
-          style={styles.iconButton}
+          accessibilityLabel={`Add a set to ${entry.name}`}
+          style={({ pressed }) => [styles.addSet, pressed && styles.pressed]}
         >
-          <Text style={styles.icon}>{renaming ? '✓' : '✏️'}</Text>
+          <Icon name="plus" size={16} color={colors.accent} />
+          <Text style={styles.addSetLabel}>Add set</Text>
         </Pressable>
 
-        <Pressable
-          onPress={() => setConfirming(true)}
-          accessibilityRole="button"
-          accessibilityLabel={`Delete ${entry.name}`}
-          style={styles.iconButton}
-        >
-          <Text style={styles.icon}>🗑</Text>
-        </Pressable>
+        <ConfirmDialog
+          visible={confirming}
+          title={`Delete ${entry.name}?`}
+          message="It disappears from your plan. Sets you already logged stay in your history and charts."
+          confirmLabel="Delete exercise"
+          destructive
+          onConfirm={() => {
+            setConfirming(false);
+            onDelete(entry.id);
+          }}
+          onCancel={() => setConfirming(false)}
+        />
       </View>
-
-      {prGain !== null ? (
-        <View style={styles.prChip}>
-          <Text style={styles.prLabel}>
-            🔥 PR +{Math.round(prGain * 10) / 10} {unit}
-          </Text>
-        </View>
-      ) : null}
-
-      <View style={styles.columns}>
-        <Text style={[styles.columnLabel, styles.columnSet]}>SET</Text>
-        <Text style={styles.columnLabel}>WEIGHT ({unit})</Text>
-        <Text style={styles.columnLabel}>REPS</Text>
-        <View style={styles.columnSpacer} />
-      </View>
-
-      {entry.sets.length === 0 ? (
-        <Text style={styles.noSets}>No sets yet — add your first below.</Text>
-      ) : (
-        entry.sets.map((set, index) => (
-          <SetRow
-            key={set.id}
-            index={index + 1}
-            set={set}
-            unit={unit}
-            ghost={history?.lastWeek[`${entry.id}:${set.set_number}`] ?? null}
-            onSave={saveSet}
-            onRemove={removeSet}
-          />
-        ))
-      )}
-
-      <Pressable
-        onPress={() => onAddSet(entry)}
-        accessibilityRole="button"
-        accessibilityLabel={`Add a set to ${entry.name}`}
-        style={styles.addSet}
-      >
-        <Text style={styles.addSetLabel}>＋ Add set</Text>
-      </Pressable>
-
-      <ConfirmDialog
-        visible={confirming}
-        title={`Delete ${entry.name}?`}
-        message="It disappears from your plan. Sets you already logged stay in your history and charts."
-        confirmLabel="Delete exercise"
-        destructive
-        onConfirm={() => {
-          setConfirming(false);
-          onDelete(entry.id);
-        }}
-        onCancel={() => setConfirming(false)}
-      />
     </View>
   );
 });
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.card,
-    borderColor: colors.line,
-    borderWidth: 1,
-    borderRadius: radius.card,
-    padding: space.md,
-    gap: space.sm,
-  },
-  header: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
-  name: { flex: 1, fontFamily: fonts.display, fontSize: 21, color: colors.text },
+  wrapper: { gap: space.md - 2 },
+  card: { backgroundColor: colors.card, borderRadius: radius.card, padding: 14, gap: space.md },
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
+  titles: { flex: 1, gap: 2 },
+  name: { ...type.display3, fontSize: 24, lineHeight: 26, color: colors.text },
+  meta: { ...type.bodySm, fontSize: 12, color: colors.dim },
   nameInput: {
     flex: 1,
-    fontFamily: fonts.display,
-    fontSize: 21,
+    ...type.display3,
+    fontSize: 24,
     color: colors.text,
     borderBottomWidth: 1,
     borderBottomColor: colors.accent,
     paddingVertical: 2,
   },
   iconButton: {
-    width: HIT_SLOP_MIN - 8,
-    height: HIT_SLOP_MIN - 8,
+    width: 36,
+    height: 36,
+    marginTop: -6,
+    marginRight: -6,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  icon: { fontSize: 15 },
-  prChip: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: space.md,
-    paddingVertical: 3,
-    borderRadius: radius.chip,
-    backgroundColor: colors.accentDark,
-    borderWidth: 1,
-    borderColor: colors.accent,
+  menu: { backgroundColor: colors.card2, borderRadius: radius.row, overflow: 'hidden' },
+  menuItem: {
+    minHeight: CONTROL.row,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingHorizontal: 14,
   },
-  prLabel: { fontFamily: fonts.bodyMed, fontSize: 12, color: colors.accent },
-  columns: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  columnLabel: {
-    flex: 1,
-    textAlign: 'center',
-    fontFamily: fonts.body,
-    fontSize: 10,
-    letterSpacing: 0.6,
-    color: colors.dim,
+  menuDivider: { height: 1, backgroundColor: colors.line, marginLeft: 14 },
+  menuLabel: { ...type.bodySm, fontFamily: fonts.bodyMed, fontSize: 14, color: colors.text },
+  menuLabelDanger: { color: colors.danger },
+  sets: { gap: 6 },
+  noSets: { ...type.bodySm, color: colors.dim },
+  addSet: {
+    minHeight: CONTROL.row,
+    borderRadius: radius.row,
+    backgroundColor: colors.card2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
-  columnSet: { flex: 0, width: 28 },
-  columnSpacer: { width: 32 },
-  noSets: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, paddingVertical: space.xs },
-  addSet: { minHeight: HIT_SLOP_MIN - 8, justifyContent: 'center' },
-  addSetLabel: { fontFamily: fonts.bodyMed, fontSize: 14, color: colors.accent },
+  pressed: { opacity: 0.85 },
+  addSetLabel: { ...type.bodyMed, fontSize: 14, color: colors.accent },
 });

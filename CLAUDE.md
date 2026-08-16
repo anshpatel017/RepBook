@@ -1,7 +1,7 @@
 # RepBook — Essentials (AI Coding Context)
 
 > Place this file at the repo root as `CLAUDE.md`. Companion docs live in `docs/`:
-> `01-wireframes.md` · `02-requirements.md` · `03-architecture.md` · `05-b2b-multitenancy.md` · `06-claude-code-prompt.md` (build plan).
+> `01-wireframes.md` · `02-requirements.md` · `03-architecture.md` · `05-b2b-multitenancy.md` · `06-claude-code-prompt.md` (build plan) · `07-ui-design-brief.md` (paste-ready brief for a visual redesign).
 > This file is the rulebook. When in doubt: requirements → architecture → wireframes, in that order. Ask only if docs don't answer it.
 
 ---

@@ -2,15 +2,21 @@ import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
-import { colors, fonts, radius, space } from '@/theme/tokens';
+import { colors, radius, space, type } from '@/theme/tokens';
 
 type ScreenProps = {
   children: ReactNode;
-  /** Centers content vertically — for login, loading and empty screens. */
   center?: boolean;
   edges?: readonly Edge[];
   padded?: boolean;
 };
+
+/**
+ * RepBook is a phone app first. The web build runs the same code in a browser
+ * window, so content is capped and centered — on a phone the cap is never
+ * reached and nothing changes.
+ */
+const MAX_CONTENT_WIDTH = 520;
 
 export function Screen({ children, center, edges = ['top', 'bottom'], padded = true }: ScreenProps) {
   return (
@@ -23,7 +29,6 @@ export function Screen({ children, center, edges = ['top', 'bottom'], padded = t
   );
 }
 
-/** Every screen ships loading + error + empty states (CLAUDE.md). */
 export function LoadingState({ label }: { label?: string }) {
   return (
     <View style={styles.stateBox}>
@@ -57,30 +62,24 @@ export function EmptyState({ title, hint }: { title: string; hint?: string }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
-  padded: { paddingHorizontal: space.lg },
+  screen: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+  },
+  padded: { paddingHorizontal: space.xl },
   center: { justifyContent: 'center' },
-  stateBox: { alignItems: 'center', justifyContent: 'center', padding: space.xl, gap: space.md },
-  stateTitle: {
-    fontFamily: fonts.bodyMed,
-    fontSize: 16,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  stateText: {
-    fontFamily: fonts.body,
-    fontSize: 14,
-    color: colors.muted,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
+  stateBox: { alignItems: 'center', justifyContent: 'center', padding: space.xxl, gap: space.md },
+  stateTitle: { ...type.display3, color: colors.text, textAlign: 'center' },
+  stateText: { ...type.bodySm, color: colors.muted, textAlign: 'center' },
   retry: {
     minHeight: 44,
     justifyContent: 'center',
     paddingHorizontal: space.lg,
     borderRadius: radius.chip,
-    borderWidth: 1,
-    borderColor: colors.line,
+    backgroundColor: colors.card2,
   },
-  retryLabel: { fontFamily: fonts.bodyMed, fontSize: 14, color: colors.accent },
+  retryLabel: { ...type.bodyMed, fontSize: 14, color: colors.accent },
 });

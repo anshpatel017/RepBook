@@ -2,16 +2,25 @@ import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, fonts, space, HIT_SLOP_MIN } from '@/theme/tokens';
+import { Icon } from '@/components/Icon';
+import { colors, space, type } from '@/theme/tokens';
 
 type ScreenHeaderProps = {
   title: string;
   subtitle?: string;
   back?: boolean;
   right?: ReactNode;
+  /** Screen-owning titles (Home, Plan setup) use display1 instead of display2. */
+  large?: boolean;
 };
 
-export function ScreenHeader({ title, subtitle, back = false, right }: ScreenHeaderProps) {
+export function ScreenHeader({
+  title,
+  subtitle,
+  back = false,
+  right,
+  large = false,
+}: ScreenHeaderProps) {
   const router = useRouter();
 
   return (
@@ -23,12 +32,12 @@ export function ScreenHeader({ title, subtitle, back = false, right }: ScreenHea
           accessibilityLabel="Go back"
           style={styles.back}
         >
-          <Text style={styles.backGlyph}>‹</Text>
+          <Icon name="chevron-left" size={24} color={colors.text} />
         </Pressable>
       ) : null}
 
       <View style={styles.titles}>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={large ? styles.titleLarge : styles.title} numberOfLines={2}>
           {title}
         </Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
@@ -40,21 +49,16 @@ export function ScreenHeader({ title, subtitle, back = false, right }: ScreenHea
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    paddingVertical: space.md,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.md },
   back: {
-    width: HIT_SLOP_MIN,
-    height: HIT_SLOP_MIN,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: -space.md,
+    marginLeft: -10,
   },
-  backGlyph: { fontFamily: fonts.display, fontSize: 34, lineHeight: 38, color: colors.text },
-  titles: { flex: 1 },
-  title: { fontFamily: fonts.display, fontSize: 26, letterSpacing: 0.5, color: colors.text },
-  subtitle: { fontFamily: fonts.body, fontSize: 13, color: colors.muted },
+  titles: { flex: 1, gap: 1 },
+  title: { ...type.display2, color: colors.text },
+  titleLarge: { ...type.display1, color: colors.text },
+  subtitle: { ...type.bodySm, color: colors.muted },
 });

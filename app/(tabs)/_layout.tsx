@@ -1,42 +1,37 @@
 import { Tabs } from 'expo-router';
-import { StyleSheet, Text } from 'react-native';
 
+import { Icon } from '@/components/Icon';
 import { colors, fonts } from '@/theme/tokens';
 
-/** Member shell: Home + Charts (wireframes screens 2 and 5). */
+/** Member shell: Train + Progress. Crossfade between tabs, never a slide. */
 export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        // Bottom tabs take `animation` but not a duration in this version.
+        animation: 'fade',
         sceneStyle: { backgroundColor: colors.bg },
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.line,
-        },
+        tabBarStyle: { backgroundColor: colors.card, borderTopWidth: 0, height: 64, paddingTop: 8 },
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.dim,
-        tabBarLabelStyle: { fontFamily: fonts.bodyMed, fontSize: 12 },
+        tabBarLabelStyle: { fontFamily: fonts.bodyMed, fontSize: 11, letterSpacing: 0.4 },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <Text style={[styles.icon, { color }]}>⌂</Text>,
+          title: 'Train',
+          tabBarIcon: ({ color }) => <Icon name="activity" size={20} color={color} />,
         }}
       />
       <Tabs.Screen
         name="charts"
         options={{
-          title: 'Charts',
-          tabBarIcon: ({ color }) => <Text style={[styles.icon, { color }]}>📈</Text>,
+          title: 'Progress',
+          tabBarIcon: ({ color }) => <Icon name="trending-up" size={20} color={color} />,
         }}
       />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  icon: { fontSize: 18, lineHeight: 22 },
-});
